@@ -15,7 +15,7 @@ class RestartReceiver : BroadcastReceiver() {
             action == Intent.ACTION_MY_PACKAGE_REPLACED ||
             action == Intent.ACTION_POWER_CONNECTED) {
             val serviceIntent = Intent(context, ScannerService::class.java).apply {
-                action = ScannerService.ACTION_START
+                this.action = ScannerService.ACTION_START
             }
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

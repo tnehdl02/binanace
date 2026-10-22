@@ -6,7 +6,9 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri\nimport android.os.PowerManager\nimport android.provider.Settings
+import android.net.Uri
+import android.os.PowerManager
+import android.provider.Settings
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
