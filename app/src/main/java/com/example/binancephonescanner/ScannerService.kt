@@ -72,7 +72,8 @@ class ScannerService : Service() {
         }
         prefs.edit().putBoolean("running", true).apply()
         updateServiceNotification("감시 실행 중 · 다음 검사 ${nextScanText()}")
-        scheduler.execute {
+        try {
+            scheduler.execute {
             // Run once immediately so the user can verify that scanning really works.
             // After this first pass, continue at each hour's :50 mark (Korea time).
             appendLog("${nowText()} | 감시 시작 | 즉시 검사 시작")
@@ -105,6 +106,13 @@ class ScannerService : Service() {
                     try { Thread.sleep(30_000) } catch (_: InterruptedException) { Thread.currentThread().interrupt(); break }
                 }
             }
+            }
+        } catch (e: Exception) {
+            running.set(false)
+            prefs.edit().putBoolean("running", false)
+                .putString("last_outcome", "감시 시작 실패: ${e.message ?: e.javaClass.simpleName}").apply()
+            appendLog("${nowText()} | 감시 시작 실패 | ${e.message ?: e.javaClass.simpleName}")
+            updateServiceNotification("감시 시작 실패 · 앱을 다시 실행하세요")
         }
     }
 

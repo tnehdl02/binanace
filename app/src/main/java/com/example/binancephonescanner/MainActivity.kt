@@ -40,16 +40,58 @@ class MainActivity : ComponentActivity() {
 
     private val refreshTask = object : Runnable {
         override fun run() {
-            refreshData()
+            safeRefreshData()
             handler.postDelayed(this, 5000)
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requestNotificationPermission()
-        buildUi()
-        refreshData()
+        try {
+            requestNotificationPermission()
+            buildUi()
+            safeRefreshData()
+        } catch (e: Throwable) {
+            showStartupError(e)
+        }
+    }
+
+    private fun showStartupError(error: Throwable) {
+        val message = error.message ?: error.javaClass.simpleName
+        val screen = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(32), dp(24), dp(24))
+            setBackgroundColor(Color.rgb(7, 13, 28))
+        }
+        val title = TextView(this).apply {
+            text = "앱 화면 초기화 실패"
+            textSize = 22f
+            setTextColor(Color.rgb(255, 120, 120))
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        val details = TextView(this).apply {
+            text = "화면을 만드는 중 오류가 발생했습니다.\n\n오류: $message\n\n앱을 종료하지 말고 이 오류 내용을 캡처해 주세요."
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            setPadding(0, dp(16), 0, dp(20))
+        }
+        val retry = Button(this).apply {
+            text = "화면 다시 열기"
+            setOnClickListener {
+                try {
+                    val intent = packageManager.getLaunchIntentForPackage(packageName)
+                    intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+                    if (intent != null) startActivity(intent)
+                    finish()
+                } catch (_: Throwable) {
+                    recreate()
+                }
+            }
+        }
+        screen.addView(title)
+        screen.addView(details)
+        screen.addView(retry, LinearLayout.LayoutParams(-1, dp(48)))
+        setContentView(screen)
     }
 
     override fun onResume() {
@@ -76,6 +118,8 @@ class MainActivity : ComponentActivity() {
             setPadding(dp(20), dp(24), dp(20), dp(30))
         }
         scroll.addView(root)
+        // Attach the root early: if a later view fails to initialize, the activity won't stay blank.
+        setContentView(scroll)
 
         val title = TextView(this).apply {
             text = "BINANCE\nPHONE SCANNER"
@@ -116,15 +160,39 @@ class MainActivity : ComponentActivity() {
         }
         val start = button("감시 시작", Color.rgb(0, 200, 137))
         start.setOnClickListener {
-            val intent = Intent(this, ScannerService::class.java).apply { action = ScannerService.ACTION_START }
-            ContextCompat.startForegroundService(this, intent)
-            Toast.makeText(this, "백그라운드 감시를 시작합니다.", Toast.LENGTH_SHORT).show()
-            refreshData()
+            try {
+                val serviceIntent = Intent(this, ScannerService::class.java).apply {
+                    action = ScannerService.ACTION_START
+                }
+                ContextCompat.startForegroundService(this, serviceIntent)
+                statusText.text = "◷ 감시 시작 요청 중…"
+                statusText.setTextColor(Color.rgb(255, 214, 102))
+                Toast.makeText(this, "감시 시작 요청을 보냈습니다. 잠시 후 상태를 확인합니다.", Toast.LENGTH_LONG).show()
+                handler.postDelayed({ safeRefreshData() }, 1000)
+                handler.postDelayed({ safeRefreshData() }, 4000)
+            } catch (e: Exception) {
+                statusText.text = "시작 실패: ${e.message ?: e.javaClass.simpleName}"
+                statusText.setTextColor(Color.RED)
+                Toast.makeText(this, "감시 시작 실패: ${e.message ?: e.javaClass.simpleName}", Toast.LENGTH_LONG).show()
+            }
         }
         val stop = button("감시 중지", Color.rgb(68, 82, 105))
         stop.setOnClickListener {
-            startService(Intent(this, ScannerService::class.java).apply { action = ScannerService.ACTION_STOP })
-            Toast.makeText(this, "감시 중지를 요청했습니다.", Toast.LENGTH_SHORT).show()
+            try {
+                val serviceIntent = Intent(this, ScannerService::class.java).apply {
+                    action = ScannerService.ACTION_STOP
+                }
+                ContextCompat.startForegroundService(this, serviceIntent)
+                statusText.text = "◷ 감시 중지 요청 중…"
+                statusText.setTextColor(Color.rgb(255, 214, 102))
+                Toast.makeText(this, "감시 중지 요청을 보냈습니다.", Toast.LENGTH_SHORT).show()
+                handler.postDelayed({ safeRefreshData() }, 1000)
+                handler.postDelayed({ safeRefreshData() }, 4000)
+            } catch (e: Exception) {
+                statusText.text = "중지 요청 실패: ${e.message ?: e.javaClass.simpleName}"
+                statusText.setTextColor(Color.RED)
+                Toast.makeText(this, "중지 요청 실패: ${e.message ?: e.javaClass.simpleName}", Toast.LENGTH_LONG).show()
+            }
         }
         controls.addView(start, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(8) })
         controls.addView(stop, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginStart = dp(8) })
@@ -168,7 +236,17 @@ class MainActivity : ComponentActivity() {
         logCard.addView(logText, margin(0, 8, 0, 0))
         root.addView(logCard)
 
-        setContentView(scroll)
+    }
+
+    private fun safeRefreshData() {
+        try {
+            refreshData()
+        } catch (e: Exception) {
+            if (::statusText.isInitialized) {
+                statusText.text = "화면 갱신 오류: ${e.message ?: e.javaClass.simpleName}"
+                statusText.setTextColor(Color.RED)
+            }
+        }
     }
 
     private fun refreshData() {

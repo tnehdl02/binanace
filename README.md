@@ -48,3 +48,4 @@ APK는 테스트용 debug APK입니다. Play 스토어 배포용 서명 APK가 �
 - 강제 종료, 재부팅, 인터넷 단절, 제조사별 배터리 관리 또는 Binance API 제한이 발생하면 감시가 중단되거나 일부 종목 검사가 실패할 수 있습니다. 이 앱은 24시간 무중단 실행을 보장하지 않습니다.
 - 재부팅 후에는 앱을 다시 열어 감시를 시작해야 합니다.
 - 이 앱은 공개 시세를 읽을 뿐 주문을 실행하지 않습니다.
+\n\n## v5 UI/diagnostic patch\n- Start/stop buttons show request state and catch startup exceptions.\n- Screen refresh errors are displayed in the status card instead of silently crashing the refresh loop.\n- Scanner service records an executor/startup failure to logs and resets the running flag.\n\n\n## v6 screen recovery patch\n- MainActivity catches startup/UI construction errors and shows a diagnostic screen instead of remaining blank.\n- The ScrollView is attached before building the remaining views to reduce blank-screen risk.\n- Not yet validated with a GitHub Actions build or on a physical device.\n
