@@ -6,7 +6,7 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
+import android.net.Uri\nimport android.os.PowerManager\nimport android.provider.Settings
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -34,7 +34,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var summaryText: TextView
     private lateinit var logText: TextView
     private lateinit var matchContainer: LinearLayout
-    private var renderedMatchSignature = ""
+    private var renderedMatchSignature = "__NOT_RENDERED__"
 
     private val refreshTask = object : Runnable {
         override fun run() {
@@ -126,7 +126,30 @@ class MainActivity : ComponentActivity() {
         }
         controls.addView(start, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(8) })
         controls.addView(stop, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginStart = dp(8) })
-        root.addView(controls, margin(0, 0, 0, 20))
+        root.addView(controls, margin(0, 0, 0, 10))
+
+        val batteryButton = button("백그라운드 유지 설정", Color.rgb(38, 116, 180))
+        batteryButton.setOnClickListener {
+            try {
+                val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                    !powerManager.isIgnoringBatteryOptimizations(packageName)) {
+                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = Uri.parse("package:$packageName")
+                    }
+                    startActivity(intent)
+                } else {
+                    startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                }
+            } catch (_: Exception) {
+                try {
+                    startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                } catch (_: Exception) {
+                    Toast.makeText(this, "설정 > 앱 > Binance Phone Scanner > 배터리에서 제한 없음을 선택하세요.", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        root.addView(batteryButton, margin(0, 0, 0, 20))
 
         val matchesCard = card()
         matchesCard.addView(text("감지 종목", 18f, Color.WHITE, true))

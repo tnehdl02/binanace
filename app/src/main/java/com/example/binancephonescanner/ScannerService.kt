@@ -73,6 +73,18 @@ class ScannerService : Service() {
         prefs.edit().putBoolean("running", true).apply()
         updateServiceNotification("감시 실행 중 · 다음 검사 ${nextScanText()}")
         scheduler.execute {
+            // Run once immediately so the user can verify that scanning really works.
+            // After this first pass, continue at each hour's :50 mark (Korea time).
+            appendLog("${nowText()} | 감시 시작 | 즉시 검사 시작")
+            try {
+                performScan()
+            } catch (e: Exception) {
+                val message = "첫 검사 오류: ${e.message ?: e.javaClass.simpleName}"
+                appendLog("${nowText()} | 검사 실패 | $message")
+                prefs.edit().putString("last_outcome", "검사 실패").apply()
+                updateServiceNotification("검사 오류 · 인터넷 연결을 확인하세요")
+            }
+
             while (running.get()) {
                 try {
                     val waitMs = millisUntilNextCheck()
@@ -128,6 +140,7 @@ class ScannerService : Service() {
 
     private fun performScan() {
         val startText = nowText()
+        appendLog("$startText | 검사 시작 | 바이낸스 USDT 무기한 종목 목록 조회 중")
         updateServiceNotification("바이낸스 종목 목록 조회 중…")
         prefs.edit().putString("last_outcome", "검사 진행 중").apply()
 
@@ -379,9 +392,15 @@ class ScannerService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        // stopWithTask=false keeps the foreground service alive when the app task is swiped away.
+        // START_STICKY asks Android to recreate the service if the process is reclaimed.
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onDestroy() {
         running.set(false)
-        prefs.edit().putBoolean("running", false).apply()
+        // Do not clear persisted running state on unexpected teardown; explicit STOP clears it.
         scheduler.shutdownNow()
         scannerPool.shutdownNow()
         super.onDestroy()
