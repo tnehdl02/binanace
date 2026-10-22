@@ -157,7 +157,7 @@ class MainActivity : ComponentActivity() {
         val failures = prefs.getInt("last_failures", 0)
         val next = prefs.getString("next_scan", "감시 시작 후 표시") ?: "감시 시작 후 표시"
         val outcome = prefs.getString("last_outcome", "대기 중") ?: "대기 중"
-        summaryText.text = "최근 검사: $last\n검사 종목: $scanned개\n조건 충족: ${matchesCount}개\n요청 실패/시간 초과: ${failures}개\n결과: $outcome\n다음 검사: $next"
+        summaryText.text = "최근 검사: $last\n검사 종목: ${scanned}개\n조건 충족: ${matchesCount}개\n요청 실패/시간 초과: ${failures}개\n결과: $outcome\n다음 검사: $next"
 
         val log = prefs.getString("scan_logs", "") ?: ""
         logText.text = if (log.isBlank()) "아직 검사 기록이 없습니다." else log
