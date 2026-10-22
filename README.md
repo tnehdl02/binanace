@@ -18,7 +18,8 @@
 - 매시간 50분 검사
 - 화면을 닫아도 실행되는 foreground service 및 상시 알림
 - 최근 검사 시각, 검사한 종목 수, 조건 충족 종목 수, 실패 수 표시
-- 검사 로그 최대 100건 저장
+- 실시간 검사 진행률 표시: 완료 종목 수 / 전체 종목 수 및 퍼센트
+- 최근 검사 기록만 간단히 저장 (최근 5개 기록)
 - 조건 충족 종목별 현재가, 고가 상승률, 현재가 상승률, 거래량 배수 표시
 - 종목별 **거래하기** 버튼으로 바이낸스 선물 차트 열기
 - 감지 시 휴대폰 알림
@@ -43,9 +44,14 @@ APK는 테스트용 debug APK입니다. Play 스토어 배포용 서명 APK가 �
 ## 사용 및 주의사항
 
 - 감시를 시작하면 상시 알림이 표시됩니다. 앱 또는 알림의 `감시 중지`로 중지할 수 있습니다.
-- 감지 종목이 없으면 앱 로그에 `조건 충족 종목 없음`으로 남습니다. 검사 실패는 성공한 검사와 구분해 기록합니다.
+- 감지 종목이 없으면 앱 로그에 `조건 충족 종목 없음`으로 남습니다. 검사 실패는 성공한 검사와 구분해 기록합니다. 검사 중에는 완료된 코인 수와 퍼센트가 갱신됩니다.
 - Android 설정에서 앱 배터리 사용을 `제한 없음` 또는 `최적화 제외`로 설정하면 백그라운드 유지에 도움이 됩니다. 메뉴 이름은 기기마다 다를 수 있습니다.
 - 강제 종료, 재부팅, 인터넷 단절, 제조사별 배터리 관리 또는 Binance API 제한이 발생하면 감시가 중단되거나 일부 종목 검사가 실패할 수 있습니다. 이 앱은 24시간 무중단 실행을 보장하지 않습니다.
 - 재부팅 후에는 앱을 다시 열어 감시를 시작해야 합니다.
 - 이 앱은 공개 시세를 읽을 뿐 주문을 실행하지 않습니다.
 \n\n## v5 UI/diagnostic patch\n- Start/stop buttons show request state and catch startup exceptions.\n- Screen refresh errors are displayed in the status card instead of silently crashing the refresh loop.\n- Scanner service records an executor/startup failure to logs and resets the running flag.\n\n\n## v6 screen recovery patch\n- MainActivity catches startup/UI construction errors and shows a diagnostic screen instead of remaining blank.\n- The ScrollView is attached before building the remaining views to reduce blank-screen risk.\n- Not yet validated with a GitHub Actions build or on a physical device.\n
+
+## 진행률 표시 업데이트
+- 검사 완료 건수와 전체 종목 수를 공유 환경설정에 기록하고 화면의 가로 진행 막대 및 퍼센트를 갱신합니다.
+- 화면 로그는 최근 5개 기록만 유지하도록 제한했습니다.
+- 이 ZIP은 소스 변경본이며, GitHub Actions에서 빌드 성공 여부를 확인해야 합니다. 실제 기기에서의 테스트는 아직 수행하지 않았습니다.

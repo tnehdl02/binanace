@@ -164,6 +164,10 @@ class ScannerService : Service() {
                 .putInt("last_failures", 1)
                 .putString("last_matches", "[]")
                 .putString("last_outcome", "검사 실패")
+                .putInt("scan_progress_done", 0)
+                .putInt("scan_progress_total", 0)
+                .putInt("scan_progress_percent", 0)
+                .putBoolean("scan_in_progress", false)
                 .apply()
             appendLog("$startText | 검사 실패 | 종목 목록을 가져오지 못함: ${e.message ?: e.javaClass.simpleName}")
             updateServiceNotification("검사 실패 · 종목 목록 조회 오류")
@@ -179,6 +183,10 @@ class ScannerService : Service() {
                 .putInt("last_failures", 1)
                 .putString("last_matches", "[]")
                 .putString("last_outcome", "검사 실패: 종목 0개")
+                .putInt("scan_progress_done", 0)
+                .putInt("scan_progress_total", 0)
+                .putInt("scan_progress_percent", 0)
+                .putBoolean("scan_in_progress", false)
                 .apply()
             appendLog("$startText | 검사 실패 | 조회된 USDT 무기한 종목이 0개")
             updateServiceNotification("검사 실패 · 종목 0개")
@@ -186,7 +194,35 @@ class ScannerService : Service() {
         }
 
         val failures = AtomicInteger(0)
-        val tasks = symbols.map { symbol -> Callable { inspectSymbol(symbol, failures) } }
+        val completed = AtomicInteger(0)
+        val progressStep = max(1, symbols.size / 100)
+        prefs.edit()
+            .putInt("scan_progress_done", 0)
+            .putInt("scan_progress_total", symbols.size)
+            .putInt("scan_progress_percent", 0)
+            .putBoolean("scan_in_progress", true)
+            .putString("last_outcome", "검사 진행 중")
+            .apply()
+        updateServiceNotification("검사 중 · 0/${symbols.size} · 0%")
+
+        val tasks = symbols.map { symbol ->
+            Callable {
+                try {
+                    inspectSymbol(symbol, failures)
+                } finally {
+                    val done = completed.incrementAndGet()
+                    if (done % progressStep == 0 || done == symbols.size) {
+                        val percent = (done * 100 / symbols.size).coerceIn(0, 100)
+                        prefs.edit()
+                            .putInt("scan_progress_done", done)
+                            .putInt("scan_progress_total", symbols.size)
+                            .putInt("scan_progress_percent", percent)
+                            .apply()
+                        updateServiceNotification("검사 중 · $done/${symbols.size} · $percent%")
+                    }
+                }
+            }
+        }
         val matches = mutableListOf<Match>()
         try {
             val results = scannerPool.invokeAll(tasks, 180, TimeUnit.SECONDS)
@@ -234,6 +270,10 @@ class ScannerService : Service() {
             .putString("last_matches", matchJson.toString())
             .putString("last_outcome", outcome)
             .putString("next_scan", nextScanText())
+            .putInt("scan_progress_done", symbols.size)
+            .putInt("scan_progress_total", symbols.size)
+            .putInt("scan_progress_percent", 100)
+            .putBoolean("scan_in_progress", false)
             .apply()
 
         val logLine = buildString {
@@ -328,7 +368,7 @@ class ScannerService : Service() {
 
     private fun appendLog(line: String) {
         val old = prefs.getString("scan_logs", "") ?: ""
-        val lines = (old.lines().filter { it.isNotBlank() } + line).takeLast(100)
+        val lines = (old.lines().filter { it.isNotBlank() } + line.take(1200)).takeLast(5)
         prefs.edit().putString("scan_logs", lines.joinToString("\n")).apply()
     }
 

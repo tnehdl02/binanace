@@ -17,6 +17,7 @@ import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -35,6 +36,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var statusText: TextView
     private lateinit var summaryText: TextView
     private lateinit var logText: TextView
+    private lateinit var progressText: TextView
+    private lateinit var progressBar: ProgressBar
     private lateinit var matchContainer: LinearLayout
     private var renderedMatchSignature = "__NOT_RENDERED__"
 
@@ -135,6 +138,16 @@ class MainActivity : ComponentActivity() {
         statusText = text("상태 확인 중…", 16f, Color.WHITE, true)
         statusCard.addView(statusText)
         statusCard.addView(text("검사 시각: 매시간 50분 (한국 시간)", 12f, Color.rgb(174, 194, 211), false), margin(0, 8, 0, 0))
+        progressText = text("검사 진행률 0 / 0 · 0%", 14f, Color.rgb(236, 249, 255), true)
+        statusCard.addView(progressText, margin(0, 14, 0, 7))
+        progressBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 100
+            progress = 0
+            progressTintList = android.content.res.ColorStateList.valueOf(Color.rgb(34, 197, 145))
+            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(48, 65, 83))
+            minimumHeight = dp(10)
+        }
+        statusCard.addView(progressBar, LinearLayout.LayoutParams(-1, dp(10)))
         root.addView(statusCard, margin(0, 0, 0, 12))
 
         val conditionCard = card()
@@ -229,7 +242,7 @@ class MainActivity : ComponentActivity() {
         root.addView(matchesCard, margin(0, 0, 0, 12))
 
         val logCard = card()
-        logCard.addView(text("검사 로그", 18f, Color.WHITE, true))
+        logCard.addView(text("최근 검사 기록", 18f, Color.WHITE, true))
         logText = text("아직 검사 기록이 없습니다.", 12f, Color.rgb(190, 208, 224), false).apply {
             typeface = Typeface.MONOSPACE
         }
@@ -262,8 +275,21 @@ class MainActivity : ComponentActivity() {
         val outcome = prefs.getString("last_outcome", "대기 중") ?: "대기 중"
         summaryText.text = "최근 검사: $last\n검사 종목: ${scanned}개\n조건 충족: ${matchesCount}개\n요청 실패/시간 초과: ${failures}개\n결과: $outcome\n다음 검사: $next"
 
+        val progressDone = prefs.getInt("scan_progress_done", 0)
+        val progressTotal = prefs.getInt("scan_progress_total", 0)
+        val progressPercent = prefs.getInt("scan_progress_percent", 0).coerceIn(0, 100)
+        val scanning = prefs.getBoolean("scan_in_progress", false)
+        progressText.text = if (progressTotal > 0) {
+            "${if (scanning) "검사 중" else "검사 진행률"}  $progressDone / $progressTotal · $progressPercent%"
+        } else {
+            "검사 진행률 대기 중"
+        }
+        progressBar.progress = progressPercent
+
         val log = prefs.getString("scan_logs", "") ?: ""
-        logText.text = if (log.isBlank()) "아직 검사 기록이 없습니다." else log
+        val outcomeLine = prefs.getString("last_outcome", "아직 검사 기록이 없습니다.") ?: "아직 검사 기록이 없습니다."
+        val compactLog = log.lines().filter { it.isNotBlank() }.takeLast(3).joinToString("\n")
+        logText.text = if (compactLog.isBlank()) outcomeLine else "$outcomeLine\n$compactLog"
 
         val matches = try { JSONArray(prefs.getString("last_matches", "[]") ?: "[]") } catch (_: Exception) { JSONArray() }
         val signature = (0 until matches.length()).joinToString("|") { i ->
